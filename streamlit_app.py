@@ -2,11 +2,11 @@ import streamlit as st
 import os
 import tempfile
 import time
-# --- UPDATED IMPORTS ---
+# --- CORRECTED IMPORTS ---
 from google.cloud import texttospeech 
-from google.auth import api_key # We'll use this object instead of BaseCredentials
-from google.auth.transport import requests # To transport the key
-# -----------------------
+from google.auth import api_key # Import the correct class for API Key credentials
+from google.auth.transport import requests # For transporting the credentials
+# -------------------------
 
 # --- Global Configuration and Authentication ---
 
@@ -44,7 +44,6 @@ def cleanup_file(filepath):
     """Safely deletes the temporary file."""
     if filepath and os.path.exists(filepath):
         try:
-            # Short delay to ensure the file handle is released
             time.sleep(0.1) 
             os.unlink(filepath)
         except Exception as e:
@@ -58,12 +57,11 @@ def get_audio_path(word):
         return None
         
     # --- AUTHENTICATION FIX ---
-    # 1. Create the API key credentials object
+    # 1. Create the API key credentials object using the correct imported class
     credentials = api_key.Credentials(GOOGLE_API_KEY)
     
-    # 2. Use the credentials object to initialize the client
+    # 2. Use the credentials object to initialize the client with an AuthorizedSession
     try:
-        # Pass the credentials object and a transport (requests) object to the client
         client = texttospeech.TextToSpeechClient(
             credentials=credentials,
             transport=requests.AuthorizedSession(credentials)
