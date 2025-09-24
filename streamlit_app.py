@@ -2,23 +2,17 @@ import streamlit as st
 import os
 import tempfile
 import time
+# --- UPDATED IMPORTS ---
 from google.cloud import texttospeech 
-from google.auth.credentials import BaseCredentials # <-- Added for robust authentication
+from google.auth import api_key # We'll use this object instead of BaseCredentials
+from google.auth.transport import requests # To transport the key
+# -----------------------
 
 # --- Global Configuration and Authentication ---
 
-# Define a custom credentials class to pass the API key in the headers
-class ApiKeyCredentials(BaseCredentials):
-    """Custom credentials class to pass the API key in the required header."""
-    def __init__(self, api_key):
-        self.api_key = api_key
-
-    def apply(self, headers, **kwargs):
-        # This header is required by Google for API Key authentication
-        headers['X-Goog-Api-Key'] = self.api_key
-
 # Securely get API Key from Streamlit Secrets
 try:
+    # Key should be set in Streamlit Secrets as [api] google_tts_key = "YOUR_KEY"
     GOOGLE_API_KEY = st.secrets["api"]["google_tts_key"]
 except KeyError:
     st.error("🚨 API key not found. Please add [api] google_tts_key to your Streamlit secrets.")
@@ -63,15 +57,22 @@ def get_audio_path(word):
         st.warning("Cannot generate audio: API Key is missing.")
         return None
         
-    # 1. Initialize client using the custom credentials object (FIX for TypeError)
-    credentials = ApiKeyCredentials(GOOGLE_API_KEY)
+    # --- AUTHENTICATION FIX ---
+    # 1. Create the API key credentials object
+    credentials = api_key.Credentials(GOOGLE_API_KEY)
     
+    # 2. Use the credentials object to initialize the client
     try:
-        client = texttospeech.TextToSpeechClient(credentials=credentials)
+        # Pass the credentials object and a transport (requests) object to the client
+        client = texttospeech.TextToSpeechClient(
+            credentials=credentials,
+            transport=requests.AuthorizedSession(credentials)
+        )
     except Exception as e:
         print(f"DEBUG ERROR: Client Init Failed: {e}")
         st.error(f"❌ Failed to initialize TTS Client: {type(e).__name__}")
         return None
+    # --------------------------
 
     synthesis_input = texttospeech.SynthesisInput(text=word)
 
