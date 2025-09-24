@@ -1,3 +1,2 @@
 streamlit
-google-cloud-texttospeech
-google-auth
+gtts
