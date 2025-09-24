@@ -14,6 +14,9 @@ except KeyError:
     # Display error if secret is missing (prevents crash)
     st.error("🚨 API key not found. Please add [api] google_tts_key to your Streamlit secrets.")
     GOOGLE_API_KEY = None
+# In your app.py, add this immediately after the 'try...except' block:
+if not GOOGLE_API_KEY:
+    st.error("❌ Key failed to load or is empty. Check secrets.toml structure!")
 
 # Word list (unchanged)
 my_list = [
