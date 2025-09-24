@@ -11,12 +11,25 @@ try:
     # Key should be set in Streamlit Secrets as [api] google_tts_key = "YOUR_KEY"
     GOOGLE_API_KEY = st.secrets["api"]["google_tts_key"]
 except KeyError:
-    # Display error if secret is missing (prevents crash)
     st.error("🚨 API key not found. Please add [api] google_tts_key to your Streamlit secrets.")
-    GOOGLE_API_KEY = None
-# In your app.py, add this immediately after the 'try...except' block:
-if not GOOGLE_API_KEY:
-    st.error("❌ Key failed to load or is empty. Check secrets.toml structure!")
+    GOOGLE_API_KEY = None 
+
+# --- TEMPORARY DEBUGGING CHECK ---
+if GOOGLE_API_KEY is None:
+    st.error("DEBUG: GOOGLE_API_KEY is None after loading attempt.")
+elif len(GOOGLE_API_KEY) < 20: # A typical API key is very long
+    st.error(f"DEBUG: Key seems too short! Length: {len(GOOGLE_API_KEY)}")
+# ---------------------------------
+# try:
+#     # Key should be set in Streamlit Secrets as [api] google_tts_key = "YOUR_KEY"
+#     GOOGLE_API_KEY = st.secrets["api"]["google_tts_key"]
+# except KeyError:
+#     # Display error if secret is missing (prevents crash)
+#     st.error("🚨 API key not found. Please add [api] google_tts_key to your Streamlit secrets.")
+#     GOOGLE_API_KEY = None
+# # In your app.py, add this immediately after the 'try...except' block:
+# if not GOOGLE_API_KEY:
+#     st.error("❌ Key failed to load or is empty. Check secrets.toml structure!")
 
 # Word list (unchanged)
 my_list = [
