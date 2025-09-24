@@ -2,43 +2,37 @@ import streamlit as st
 import os
 import tempfile
 import time
-# --- NEW IMPORTS ---
 from google.cloud import texttospeech 
-# -------------------
+from google.auth.credentials import BaseCredentials # <-- Added for robust authentication
 
-# --- Securely get API Key ---
+# --- Global Configuration and Authentication ---
+
+# Define a custom credentials class to pass the API key in the headers
+class ApiKeyCredentials(BaseCredentials):
+    """Custom credentials class to pass the API key in the required header."""
+    def __init__(self, api_key):
+        self.api_key = api_key
+
+    def apply(self, headers, **kwargs):
+        # This header is required by Google for API Key authentication
+        headers['X-Goog-Api-Key'] = self.api_key
+
+# Securely get API Key from Streamlit Secrets
 try:
-    # Key should be set in Streamlit Secrets as [api] google_tts_key = "YOUR_KEY"
     GOOGLE_API_KEY = st.secrets["api"]["google_tts_key"]
 except KeyError:
     st.error("🚨 API key not found. Please add [api] google_tts_key to your Streamlit secrets.")
     GOOGLE_API_KEY = None 
-
-# --- TEMPORARY DEBUGGING CHECK ---
-if GOOGLE_API_KEY is None:
-    st.error("DEBUG: GOOGLE_API_KEY is None after loading attempt.")
-elif len(GOOGLE_API_KEY) < 20: # A typical API key is very long
-    st.error(f"DEBUG: Key seems too short! Length: {len(GOOGLE_API_KEY)}")
-# ---------------------------------
-# try:
-#     # Key should be set in Streamlit Secrets as [api] google_tts_key = "YOUR_KEY"
-#     GOOGLE_API_KEY = st.secrets["api"]["google_tts_key"]
-# except KeyError:
-#     # Display error if secret is missing (prevents crash)
-#     st.error("🚨 API key not found. Please add [api] google_tts_key to your Streamlit secrets.")
-#     GOOGLE_API_KEY = None
-# # In your app.py, add this immediately after the 'try...except' block:
-# if not GOOGLE_API_KEY:
-#     st.error("❌ Key failed to load or is empty. Check secrets.toml structure!")
-
-# Word list (unchanged)
+    
+# Word list
 my_list = [
     'spray', 'riddles', 'basil', 'petals', 'trains', 'subway',
     'brushes', 'camel', 'plain', 'shuffle', 'holidays', 'essay',
     'fables', 'paints', 'claim', 'stairs', 'fingernails', 'despair'
 ]
 
-# Initialize session state (unchanged)
+# --- Session State Initialization ---
+
 if 'word_index' not in st.session_state:
     st.session_state.word_index = 0
 if 'feedback' not in st.session_state:
@@ -50,29 +44,41 @@ if 'current_audio_path' not in st.session_state:
 
 st.title("Spelling Quiz (Google Cloud TTS)")
 
+# --- Utility Functions ---
+
 def cleanup_file(filepath):
     """Safely deletes the temporary file."""
     if filepath and os.path.exists(filepath):
         try:
+            # Short delay to ensure the file handle is released
             time.sleep(0.1) 
             os.unlink(filepath)
         except Exception as e:
             print(f"DEBUG: Failed to delete temp file {filepath}. Error: {e}")
 
+@st.cache_data
 def get_audio_path(word):
-    """Generates audio using Google Cloud TTS and saves it to a temporary file."""
+    """Generates audio using Google Cloud TTS, saves it to a file, and returns the path."""
     if not GOOGLE_API_KEY:
-        # Stop here if the API key wasn't loaded from secrets
+        st.warning("Cannot generate audio: API Key is missing.")
         return None
         
-    # Initialize the client using the API key
-    client = texttospeech.TextToSpeechClient(api_key=GOOGLE_API_KEY)
+    # 1. Initialize client using the custom credentials object (FIX for TypeError)
+    credentials = ApiKeyCredentials(GOOGLE_API_KEY)
+    
+    try:
+        client = texttospeech.TextToSpeechClient(credentials=credentials)
+    except Exception as e:
+        print(f"DEBUG ERROR: Client Init Failed: {e}")
+        st.error(f"❌ Failed to initialize TTS Client: {type(e).__name__}")
+        return None
+
     synthesis_input = texttospeech.SynthesisInput(text=word)
 
     # Configure the voice and audio settings
     voice = texttospeech.VoiceSelectionParams(
         language_code="en-US", 
-        name="en-US-Standard-C" # A reliable US English voice
+        name="en-US-Standard-C"
     )
 
     audio_config = texttospeech.AudioConfig(
@@ -94,9 +100,8 @@ def get_audio_path(word):
         return temp_path
             
     except Exception as e:
-        print(f"DEBUG ERROR: Google Cloud TTS failed for '{word}': {e}")
-        # The st.error message is more visible to the user than the print()
-        st.error(f"❌ Could not generate audio. API Error: {type(e).__name__}")
+        print(f"DEBUG ERROR: Google Cloud TTS API Call failed for '{word}': {e}")
+        st.error(f"❌ Could not generate audio. API Call Error: {type(e).__name__}. Check key validity/restrictions.")
         cleanup_file(temp_path)
         return None
 
@@ -105,8 +110,6 @@ def get_audio_path(word):
 if st.session_state.word_index < len(my_list):
     word = my_list[st.session_state.word_index]
     st.write("Listen to the word and type its spelling:")
-
-    # State variable is already initialized above
 
     # Play button
     if st.button("🔊 Play Word"):
@@ -119,7 +122,6 @@ if st.session_state.word_index < len(my_list):
         # Display the audio player using the file path
         if st.session_state.current_audio_path:
             st.audio(st.session_state.current_audio_path, format='audio/mp3')
-        # If get_audio_path failed, it already displayed an st.error
 
     user_input = st.text_input("Your spelling:", key=f"input_{st.session_state.word_index}")
 
