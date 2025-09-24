@@ -22,13 +22,17 @@ if 'word_list' not in st.session_state:
 def play_word_audio(word):
     """Generates and plays the audio for the given word."""
     try:
+        # Check for potential library issues by wrapping in a try-except block
         tts = gTTS(text=word, lang='en')
         audio_buffer = io.BytesIO()
         tts.write_to_fp(audio_buffer)
         st.audio(audio_buffer, format="audio/mp3", autoplay=True)
     except Exception as e:
+        # Catch any errors during the TTS process and show a message
         st.error(f"Error generating audio: {e}")
-        st.write("Please try again or check your internet connection.")
+        st.write("Please check your internet connection and try again.")
+        # Return an empty buffer to prevent further errors
+        return io.BytesIO()
 
 # --- Main App Logic ---
 # Get the current word to be spelled
