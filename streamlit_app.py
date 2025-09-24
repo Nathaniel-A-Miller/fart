@@ -27,7 +27,8 @@ def get_audio(word):
         mp3_fp.seek(0)
         return mp3_fp.read()
     except Exception as e:
-        st.error(f"Error generating audio: {e}")
+        # Ensure this is visible in the Streamlit Cloud logs
+        print(f"DEBUG: Error generating audio for '{word}': {e}") 
         return None
 
 if st.session_state.word_index < len(my_list):
@@ -39,6 +40,9 @@ if st.session_state.word_index < len(my_list):
         audio_bytes = get_audio(word)
         if audio_bytes:
             st.audio(audio_bytes, format='audio/mp3')
+        else:
+            # THIS WILL SHOW THE ERROR MESSAGE INSTEAD OF THE SILENT FAILURE
+            st.error("❌ Failed to generate audio. Check the Streamlit logs!")
 
     user_input = st.text_input("Your spelling:", key=f"input_{st.session_state.word_index}")
 
