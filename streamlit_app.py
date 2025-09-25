@@ -1,10 +1,10 @@
 import streamlit as st
 
-st.title("💭 Writing Check")
+st.title("💭Rachel's Writing Check")
 
 # Radio with no default selection on page load
 answer = st.radio(
-    "Are you thinking about how bad your writing is?",
+    "Are you negatively obsessing over your writing?",
     ["Yes", "No"],
     index=None
 )
